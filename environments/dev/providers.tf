@@ -17,13 +17,14 @@ terraform {
 
 provider "azurerm" {
   features {}
-  subscription_id = var.subscription_id
+  #subscription_id = var.subscription_id
+  subscription_id = "ea891df5-f65a-40c0-9880-4eae51df72de"
 }
 
-variable "subscription_id" {
-  description = "The Azure Subscription ID."
-  type        = string
-}
+# variable "subscription_id" {
+#   description = "The Azure Subscription ID."
+#   type        = string
+# }
 
 # provider "azuread" {
 # }
