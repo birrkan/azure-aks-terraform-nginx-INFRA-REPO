@@ -62,7 +62,7 @@ jobs:
           export STORAGE_ACCOUNT_NAME='${{ secrets.STORAGE_ACCOUNT_NAME }}'
           export CONTAINER_NAME='${{ secrets.CONTAINER_NAME }}'
           cd environments/${{ github.ref == 'refs/heads/dev' && 'dev' || (github.ref == 'refs/heads/main' && 'prod' || '') }}  
-          terraform plan -var="subscription_id=$SUBSCRIPTION_ID"
+          terraform plan -var="subscription_id=$ARM_SUBSCRIPTION_ID"
 
       - name: Run Terraform Apply
         run: |
@@ -74,7 +74,7 @@ jobs:
           export STORAGE_ACCOUNT_NAME='${{ secrets.STORAGE_ACCOUNT_NAME }}'
           export CONTAINER_NAME='${{ secrets.CONTAINER_NAME }}'
           cd environments/${{ github.ref == 'refs/heads/dev' && 'dev' || (github.ref == 'refs/heads/main' && 'prod' || '') }}  
-          terraform apply -auto-approve -var="subscription_id=${{ secrets.SUBSCRIPTION_ID }}"
+          terraform apply -auto-approve -var="subscription_id=$ARM_SUBSCRIPTION_ID"
 
   teardown:
     if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod' }}
