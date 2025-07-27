@@ -30,7 +30,7 @@ jobs:
           chmod +x store-tfstate.sh
           bash -c "source store-tfstate.sh '${{ secrets.TENANT_ID }}' \
                                   '${{ secrets.SUBSCRIPTION_ID }}' \
-                                  '${{ secrets.USER_EMAIL }}' \
+                                  '${{ secrets.ASSIGNEE_ID }}' \
                                   '${{ secrets.RESOURCE_GROUP_NAME }}' \
                                   '${{ secrets.STORAGE_ACCOUNT_NAME }}' \
                                   '${{ secrets.CONTAINER_NAME }}' \

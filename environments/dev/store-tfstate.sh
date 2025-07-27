@@ -4,7 +4,7 @@
 # Variables
 TENANT_ID="$1"
 SUBSCRIPTION_ID="$2"
-USER_EMAIL="$3"
+ASSIGNEE_ID="$3"
 RESOURCE_GROUP_NAME="$4"
 STORAGE_ACCOUNT_NAME="$5"
 CONTAINER_NAME="$6"
@@ -49,7 +49,7 @@ else
 fi
 
 # Assign Key Vault Secrets Officer role to the user account
-az role assignment create --role "Key Vault Secrets Officer" --assignee $USER_EMAIL --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP_NAME/providers/Microsoft.KeyVault/vaults/$KEYVAULT_NAME
+az role assignment create --role "Key Vault Secrets Officer" --assignee $ASSIGNEE_ID --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP_NAME/providers/Microsoft.KeyVault/vaults/$KEYVAULT_NAME
 echo "role assignment successful"
 
 # Store Storage Account Access Key in Key Vault
