@@ -33,16 +33,3 @@ module "acr" {
   acr_name = var.acr_name
   acr_sku = var.acr_sku
 }
-
-# module "storage" {
-#   source = "../../modules/storage"
-  
-#   region                     = var.region
-#   resource_group_name        = module.network.resource_group_name
-#   storage_account_name       = var.storage_account_name
-#   tf_state_container_name    = var.tf_state_container_name
-#   shared_access_key_enabled  = var.shared_access_key_enabled
-#   key_vault_id               = module.keyvault.keyvault_id
-
-#   depends_on = [ module.keyvault ]
-# }
