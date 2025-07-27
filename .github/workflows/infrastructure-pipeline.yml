@@ -77,7 +77,7 @@ jobs:
           terraform apply -auto-approve -var="subscription_id=$ARM_SUBSCRIPTION_ID"
 
   teardown:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     container:
       image: 1kan/birkan-terraform-azure:1.10.5
