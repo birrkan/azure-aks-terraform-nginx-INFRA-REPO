@@ -1,0 +1,103 @@
+name: Infrastructure Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - prod
+  workflow_dispatch:
+
+jobs:
+  setup:
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod'
+    runs-on: ubuntu-latest
+    container:
+      image: 1kan/birkan-terraform-azure:1.10.5
+      options: --user root
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Run Terraform Init
+        run: |
+          cd environments/${{ github.ref == 'refs/heads/dev' && 'dev' || (github.ref == 'refs/heads/main' && 'prod' || '') }}
+          chmod +x store-tfstate.sh
+          bash -c "source store-tfstate.sh '${{ secrets.TENANT_ID }}' \
+                                  '${{ secrets.SUBSCRIPTION_ID }}' \
+                                  '${{ secrets.ASSIGNEE_ID }}' \
+                                  '${{ secrets.RESOURCE_GROUP_NAME }}' \
+                                  '${{ secrets.STORAGE_ACCOUNT_NAME }}' \
+                                  '${{ secrets.CONTAINER_NAME }}' \
+                                  '${{ secrets.KEYVAULT_NAME }}' \
+                                  '${{ secrets.SECRET_NAME }}' \
+                                  '${{ secrets.LOCATION }}' "
+
+          export ARM_CLIENT_ID='${{ secrets.ARM_CLIENT_ID }}'
+          export ARM_CLIENT_SECRET='${{ secrets.ARM_CLIENT_SECRET }}'
+          export ARM_SUBSCRIPTION_ID='${{ secrets.SUBSCRIPTION_ID }}'
+          export ARM_TENANT_ID='${{ secrets.AZURE_TENANT_ID }}'   
+          export RESOURCE_GROUP_NAME='${{ secrets.RESOURCE_GROUP_NAME }}'
+          export STORAGE_ACCOUNT_NAME='${{ secrets.STORAGE_ACCOUNT_NAME }}'
+          export CONTAINER_NAME='${{ secrets.CONTAINER_NAME }}'
+
+          terraform init -backend-config="resource_group_name=$RESOURCE_GROUP_NAME" \
+               -backend-config="storage_account_name=$STORAGE_ACCOUNT_NAME" \
+               -backend-config="container_name=$CONTAINER_NAME" \
+               -backend-config="access_key=$ARM_ACCOUNT_KEY" \
+               -reconfigure
+
+      - name: Run Terraform Plan
+        run: |
+          export ARM_CLIENT_ID='${{ secrets.ARM_CLIENT_ID }}'
+          export ARM_CLIENT_SECRET='${{ secrets.ARM_CLIENT_SECRET }}'
+          export ARM_SUBSCRIPTION_ID='${{ secrets.SUBSCRIPTION_ID }}'
+          export ARM_TENANT_ID='${{ secrets.AZURE_TENANT_ID }}'   
+          export RESOURCE_GROUP_NAME='${{ secrets.RESOURCE_GROUP_NAME }}'
+          export STORAGE_ACCOUNT_NAME='${{ secrets.STORAGE_ACCOUNT_NAME }}'
+          export CONTAINER_NAME='${{ secrets.CONTAINER_NAME }}'
+          cd environments/${{ github.ref == 'refs/heads/dev' && 'dev' || (github.ref == 'refs/heads/main' && 'prod' || '') }}  
+          terraform plan -var="subscription_id=$ARM_SUBSCRIPTION_ID"
+
+      - name: Run Terraform Apply
+        run: |
+          export ARM_CLIENT_ID='${{ secrets.ARM_CLIENT_ID }}'
+          export ARM_CLIENT_SECRET='${{ secrets.ARM_CLIENT_SECRET }}'
+          export ARM_SUBSCRIPTION_ID='${{ secrets.SUBSCRIPTION_ID }}'
+          export ARM_TENANT_ID='${{ secrets.AZURE_TENANT_ID }}'   
+          export RESOURCE_GROUP_NAME='${{ secrets.RESOURCE_GROUP_NAME }}'
+          export STORAGE_ACCOUNT_NAME='${{ secrets.STORAGE_ACCOUNT_NAME }}'
+          export CONTAINER_NAME='${{ secrets.CONTAINER_NAME }}'
+          cd environments/${{ github.ref == 'refs/heads/dev' && 'dev' || (github.ref == 'refs/heads/main' && 'prod' || '') }}  
+          terraform apply -auto-approve -var="subscription_id=$ARM_SUBSCRIPTION_ID"
+
+  teardown:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    container:
+      image: 1kan/birkan-terraform-azure:1.10.5
+      options: --user root
+    needs: setup
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Run Terraform Destroy
+        run: |
+          cd environments/${{ github.ref == 'refs/heads/dev' && 'dev' || (github.ref == 'refs/heads/main' && 'prod' || '') }}  
+          terraform init -backend-config="resource_group_name=${{ secrets.RESOURCE_GROUP_NAME }}" \
+                         -backend-config="storage_account_name=${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+                         -backend-config="container_name=${{ secrets.CONTAINER_NAME }}" \
+                         -reconfigure
+          terraform destroy -auto-approve -var="subscription_id=$ARM_SUBSCRIPTION_ID"
