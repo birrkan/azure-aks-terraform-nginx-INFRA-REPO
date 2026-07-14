@@ -1,42 +1,35 @@
-- md file is converted from docx file using pandoc-cli tool
+# **Project Architecture and Design**
 
-# Project Architecture and Design
+### **Overview of the Project**
 
-[]{#_Toc207524456 .anchor}  4.1. Overview of the Project
+This project demonstrates an end-to-end DevOps workflow for deploying a containerized web application to Microsoft Azure. A simple .NET application is packaged into a Docker container and automatically built and pushed to Azure Container Registry through a GitHub Actions CI/CD pipeline. The required Azure infrastructure, including networking, storage, container registry, and Azure Kubernetes Service (AKS), is provisioned using Terraform as Infrastructure as Code. Once deployed, AKS retrieves the container image from ACR and runs the application in a Kubernetes environment, creating a fully automated pipeline from source code to cloud deployment.
 
-This project is an example of an automated infrastructure and
-application deployment where the best DevOps practices are applied. An
-example Nginx web application inside a AKS cluster is hosted on
-Microsoft Azure with integration of ACR and CI/CD pipelines.
+---
 
-[]{#_Toc207524457 .anchor}  4.2. High-Level Architectures
+
+### **High-Level Architectures**
 
 -   Tfstate files are stored inside blob storage. Terraform gains access
     to the storage account where the blob storage is located via storage
     account access key from the key
-    vault:![](./media/media/image3.png){width="6.490277777777778in"
-    height="1.5375in"}
+    vault:![](./media/media/image3.png)
 
 -   Built application images (docker images) are pushed to Azure
     container registry which is connected to AKS. AKS pulls the images
     from ACR to update its current deployment configuration with the new
-    image:![](./media/media/image4.png){width="5.905778652668417in"
-    height="1.7882491251093613in"}
+    image:![](./media/media/image4.png)
 
 -   The process can also be visualized for the pipelines. Infrastructure
     pipeline provisions the infrastructure and application pipeline uses
     the provisioned resources to deploy the application:
 
-![](./media/media/image5.png){width="5.534482720909886in"
-height="4.606155949256343in"}
+![](./media/media/image5.png)
 
-# Implementation Details
+# **Implementation Details**
+### **Overall Terraform Structure:**
 
-[]{#_Toc207524459 .anchor}5.1 Overall Terraform Structure:
-
-![](./media/media/image6.png){width="2.6868055555555554in"
-height="3.0340277777777778in"}In this project I am considering a clean
-folder structure for the terraform code. I am separating development and
+![](./media/media/image6.png)
+In this project I am considering a clean directory structure for the terraform code. I am separating development and
 productions environments, which will be triggered for deployment
 depending on the git branches the code is being pushed to.
 
@@ -88,7 +81,7 @@ conflicts of the infrastructure definition is avoided.
     such as resource IDs and URLs. We are able to see these outputs when
     we are running our terraform code.
 
-## The script Store-tfstate.sh:
+### **The script Store-tfstate.sh:**
 
 Before I run my terraform configuration, I need to run a script to set
 up the storage account and key-vault for my infrastructure. The reason
@@ -97,8 +90,7 @@ creating a tfstate file I need a storage account already created but if
 the creation of storage account inside terraform, that means I will not
 be able to make use of tfstate file.
 
-![](./media/media/image7.png){width="1.7986111111111112in"
-height="1.6527777777777777in"}In the script, I am first pulling my
+![](./media/media/image7.png)In the script, I am first pulling my
 variables from Github repo's secrets vault. This method ensures that I
 don't have any hardcoded values in my code for the best security
 practices. Then I proceed with creation of storage account and key
@@ -106,26 +98,25 @@ vault. I do the checks on each step to ensure whether the resource
 already exists. If the resource exists it skips the command, if not it
 proceeds with the creation of the resource.
 
-![](./media/media/image8.png){width="4.728575021872266in"
-height="1.3644127296587927in"}
+![](./media/media/image8.png)
 
 After the creation of the resources, I am exporting the values from the
 created resources such as their names and keys as environment variables.
 These environment variables will be used later in the CI/CD pipeline.
 
-## 5.2 Terraform Modules
+### **Terraform Modules**
 
 In this project I will be mainly using Azure provided modules. By using
 official modules we get ourselves free from maintaining the modules.
 This approach reduces the risk of new security threats by keeping the
 modules automatically up to date.
 
-### Network module
+#### **Network module**
 
-![](./media/media/image9.png){width="6.5in" height="2.46875in"}
+![](./media/media/image9.png)
 
-![](./media/media/image10.png){width="1.3227515310586178in"
-height="1.3123359580052494in"}In my modules/network folder I have 4
+![](./media/media/image10.png)
+In my modules/network folder I have 4
 files. Vnet.tf is responsible for creating the virtual networks while
 nsg.tf creates the security gorups. Variables include the variable
 definitions and outputs include the outputs I specify that would be
@@ -138,8 +129,7 @@ Its primary components include the creation of a resource group, virtual
 networks (VNet) along with their associated subnets, and network
 security groups (NSGs) with detailed security rules.
 
-![](./media/media/image11.png){width="5.936757436570429in"
-height="4.38589457567804in"}
+![](./media/media/image11.png)
 
 I will be considering and practicing the best modularity and security in
 my approach.\
@@ -169,8 +159,7 @@ The module uses a depends_on clause to ensure that the resource group is
 fully provisioned before attempting to create the VNet, thereby avoiding
 dependency and timing issues.
 
-![](./media/media/image12.png){width="6.5in"
-height="6.098611111111111in"}
+![](./media/media/image12.png)
 
 In the file nsg.tf I am creating my security groups for my resources.
 This step is crucial for network security for we are defining which
@@ -182,27 +171,21 @@ to my device IP only.
 After the creation of my security groups, I am associating them with the
 subnets I created earlier.
 
-![](./media/media/image13.png){width="2.101816491688539in"
-height="2.094488188976378in"}![](./media/media/image13.png){width="2.0905621172353457in"
-height="2.806642607174103in"}![](./media/media/image13.png){width="2.2664938757655295in"
-height="1.8924846894138232in"}
+![](./media/media/image13.png)![](./media/media/image13.png)![](./media/media/image13.png)
 
 These are the values I have given to my variables for the network module
 for the dev environment. These values are in dev.auto.tfvars file.
 
 ## COMPUTE MODULE / AZURE KUBERNETES:
 
-![](./media/media/image9.png){width="6.5in" height="3.40625in"}
-
-![](./media/media/image14.png){width="1.3222222222222222in"
-height="1.0097222222222222in"}In my compute model, I have 3 files: AKS,
+![](./media/media/image9.png)
+![](./media/media/image14.png)In my compute model, I have 3 files: AKS,
 outputs and variables.tf
 
 In my AKS.tf file I am once again creating a separate resoruce group for
 my compute resources then proceed with creating my kubernetes cluster.
 
-![](./media/media/image15.png){width="6.5in"
-height="7.898611111111111in"}
+![](./media/media/image15.png)
 
 By using the random_pet resource, the module ensures that each AKS
 cluster receives a unique DNS prefix. This is to avoid naming conflicts
@@ -240,14 +223,12 @@ built-in networking configuration.
 
 These are the values I have given to my variables for AKS module for the
 dev
-environment![](./media/media/image16.png){width="3.8222222222222224in"
-height="2.2805555555555554in"}. These values are in dev.auto.tfvars
-file.
+environment![](./media/media/image16.png)
+These values are in dev.auto.tfvars file.
 
-## STORAGE MODULE / AZURE CONTAINER REGISTERY:
+#### **STORAGE MODULE / AZURE CONTAINER REGISTERY:**
 
-![](./media/media/image9.png){width="6.5in"
-height="1.9270833333333333in"}
+![](./media/media/image9.png)
 
 The ACR module is designed to create an Azure Container Registry
 instance that serves as a private registry for storing container images.
@@ -257,15 +238,13 @@ ACR, later the application pipeline will build the application image,
 push it to ACR, then deploy that image to the AKS we created in the
 previous module.
 
-![](./media/media/image17.png){width="5.353497375328084in"
-height="2.2080577427821524in"}
+![](./media/media/image17.png)
 
 Creating an ACR is a straightforward task. I am using the simple example
 from Microsoft documentation to avoid complexity. While creating Azure
 Container Registery, it is crucial to create a unique name for it.
 
-![](./media/media/image18.png){width="2.4472222222222224in"
-height="0.8847222222222222in"}These are the values I have given to my
+![](./media/media/image18.png)These are the values I have given to my
 variables for ACR module for the dev environment. These values are in
 dev.auto.tfvars file.
 
@@ -273,8 +252,7 @@ dev.auto.tfvars file.
 
 ### INFRASTRUCTURE PIPELINE:
 
-![](./media/media/image19.png){width="6.263409886264217in"
-height="1.5825863954505688in"}
+![](./media/media/image19.png)
 
 This is the pipeline for deploying my terraform configuration to Azure.
 
@@ -283,15 +261,14 @@ I have two jobs: setup and teardown.
 Setup job takes care of initializing, planning and applying the
 terraform configuration.
 
-![](./media/media/image20.png){width="6.232380796150482in"
-height="4.689917979002625in"}
+![](./media/media/image20.png)
 
 As a first step, to gather the environment variables it runs the
 store-tfstate.sh script which handles the creation of storage account
 for storing tfstate file and a key-vault. Then exports the values and
 secrets of created resources as environment variables. Which will be
 used in the next step where I run the terraform commands.\
-![](./media/media/image21.png){width="6.5in" height="3.925in"}
+![](./media/media/image21.png)
 
 Terraform init sets up the providers and backend for the configuration.
 For every step I am using a service provider (SP) instead of my user
@@ -320,23 +297,20 @@ environments.
 After all these terraform commands are run, my infrastructure on Azure
 is ready to be used.
 
-![](./media/media/image22.png){width="2.5331594488188975in"
-height="3.878261154855643in"}Thanks to using infrastructure as code
+![](./media/media/image22.png)Thanks to using infrastructure as code
 (IAC) approach, the creation of the whole infrastructure takes
 approximately only 7 minutes to be completed. Which would have taken a
 lot more time and be prone to mistakes and inconsistencies if done by
 manually.
 
-![](./media/media/image23.png){width="6.5in"
-height="1.1381944444444445in"}
+![](./media/media/image23.png)
 
 Terraform destroy command is used to automatically destroy the whole
 infrastructure that was defined in the terraform configuration.
 
 ### APPLICATION & APPLICATION PIPELINE - (dockerfile and Kubernetes deployment):
 
-![](./media/media/image24.png){width="5.301420603674541in"
-height="1.2394280402449693in"}
+![](./media/media/image24.png)
 
 The application I will be hosting on the infrastructure I provisioned on
 the previous steps is a simple webpage hosted on nginx. I am using the
@@ -347,8 +321,7 @@ deployed into the Kubernetes cluster via deployment file. In the
 deployment file (deployment.yaml) we define two kind of kubernetes
 resources that is needed to run my nginx page: deployment and service.
 
-![](./media/media/image25.png){width="3.6326388888888888in"
-height="6.538888888888889in"}**Deployment:**
+![](./media/media/image25.png)**Deployment:**
 
 In the deployment I am creating a template for the image to be deployed.
 I set the name of the container as "nginx" while entering a placeholder
@@ -375,8 +348,7 @@ route the traffic to.
 
 ### APPLICATION PIPELINE:
 
-![](./media/media/image26.png){width="6.103403324584427in"
-height="1.6977045056867892in"}
+![](./media/media/image26.png)
 
 The workflow overview for my application pipeline is to build the docker
 image, push it to the ACR we created in the infrastructure setup and
@@ -384,9 +356,7 @@ then deploy the deployment to the AKS on Azure.
 
 The pipeline has two jobs: build and deploy:
 
-![](./media/media/image27.png){width="6.5in"
-height="4.945138888888889in"}
-
+![](./media/media/image27.png)
 In build job, I am setting up my environment variables, then logging in
 to the azure account via service provider (sp). Then I am building my
 docker image from the dockerfile, I am setting the image name as
@@ -396,8 +366,7 @@ unique at each build.
 After the image creation I am logging in to the azure container registry
 to push the image.
 
-![](./media/media/image28.png){width="6.5in"
-height="2.984722222222222in"}
+![](./media/media/image28.png)
 
 In the deploy job, I am first attaching the ACR to AKS. This step
 ensures that AKS has permission to pull images from the ACR. Then I am
@@ -413,22 +382,18 @@ Alternatively, I can go to the Azure portal, find my resource group for
 AKS, find my Kubernetes load balancer and see my external IP address
 there:
 
-![](./media/media/image29.png){width="6.5in"
-height="3.4916666666666667in"}
+![](./media/media/image29.png)
 
 The whole pipeline takes roughly 5 minutes to run:
 
-![](./media/media/image30.png){width="2.796678696412948in"
-height="4.638627515310586in"}
-![](./media/media/image31.png){width="2.971330927384077in"
-height="4.617382983377078in"}
+![](./media/media/image30.png)
+![](./media/media/image31.png)
 
 And this is the screenshot of my successfully deployed page:
 
-![](./media/media/image32.png){width="6.5in"
-height="3.8256944444444443in"}
+![](./media/media/image32.png)
 
-# Conclusion
+# **Conclusion**
 
 The purpose of the project to explore the best practices of provisioning
 a cloud infrastructure as infrastructure as code (IAC) and successfully
@@ -441,32 +406,3 @@ deployment to achieve agile practices in the team.
 Thanks to these methods, the team is able to deploy new releases of the
 application with no extra manual toil. Focusing their time and resources
 only on the development part.
-
-# Appendices
-
--   My infrastructure git repository:
-    <https://github.com/asanguine/azure-aks/tree/dev>
-
--   My application git repository:
-    <https://github.com/asanguine/azure-app/tree/dev>
-
--   [Describe Cloud Computing - Training \| Microsoft
-    Learn](https://learn.microsoft.com/en-us/training/modules/describe-cloud-compute/)
-
--   [Describe the benefits of using cloud services - Training \|
-    Microsoft
-    Learn](https://learn.microsoft.com/en-us/training/modules/describe-benefits-use-cloud-services/)
-
--   [Describe Cloud Service Types - Training \| Microsoft
-    Learn](https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/)
-
--   <https://learn.microsoft.com/en-us/azure/container-registry/container-registry-get-started-terraform?tabs=azure-cli>
-
--   Module sources from the official Terraform Registry:
-
-    -   <https://registry.terraform.io/modules/Azure/avm-res-network-networksecuritygroup/azurerm/0.5.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls>
-
-    -   <https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm/0.10.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls>
-
--   Storage Account tutorial:
-    [*https://learn.microsoft.com/en-us/azure/developer/terraform/store-state-in-azure-storage?tabs=azure-cli*](https://learn.microsoft.com/en-us/azure/developer/terraform/store-state-in-azure-storage?tabs=azure-cli)
