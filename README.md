@@ -1,3 +1,8 @@
+**Note:** This repository contains the Azure infrastructure code managed with Terraform. It provisions the required cloud resources, including networking, Azure Kubernetes Service (AKS), Azure Container Registry (ACR), and storage components.  
+The application source code, Docker configuration, and CI/CD pipeline for building and pushing container images are maintained separately.  
+For the application repository, please visit: **[Application Repository](https://github.com/birrkan/azure-aks-terraform-nginx-APP-REPO)**
+
+
 # **Project Architecture and Design**
 
 ### **Overview of the Project**
